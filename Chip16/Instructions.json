@@ -1,0 +1,567 @@
+{
+  "0": {
+    "opcode": 0,
+    "mnemonic": "NOP",
+    "flags": []
+  },
+  "1": {
+    "opcode": 1,
+    "mnemonic": "CLS",
+    "flags": []
+  },
+  "2": {
+    "opcode": 2,
+    "mnemonic": "VBLNK",
+    "flags": []
+  },
+  "3": {
+    "opcode": 3,
+    "mnemonic": "BGC N",
+    "flags": []
+  },
+  "4": {
+    "opcode": 4,
+    "mnemonic": "SPR HHLL",
+    "flags": []
+  },
+  "5": {
+    "opcode": 5,
+    "mnemonic": "DRW RX, RY, HHLL",
+    "flags": [
+      "C"
+    ]
+  },
+  "6": {
+    "opcode": 6,
+    "mnemonic": "DRW RX, RY, RZ",
+    "flags": [
+      "C"
+    ]
+  },
+  "7": {
+    "opcode": 7,
+    "mnemonic": "RND RX, HHLL",
+    "flags": []
+  },
+  "8": {
+    "opcode": 8,
+    "mnemonic": "FLIP 1, 1",
+    "flags": []
+  },
+  "9": {
+    "opcode": 9,
+    "mnemonic": "SND0",
+    "flags": []
+  },
+  "10": {
+    "opcode": 10,
+    "mnemonic": "SND1 HHLL",
+    "flags": []
+  },
+  "11": {
+    "opcode": 11,
+    "mnemonic": "SND2 HHLL",
+    "flags": []
+  },
+  "12": {
+    "opcode": 12,
+    "mnemonic": "SND3 HHLL",
+    "flags": []
+  },
+  "13": {
+    "opcode": 13,
+    "mnemonic": "SNP RX, HHLL",
+    "flags": []
+  },
+  "14": {
+    "opcode": 14,
+    "mnemonic": "SNG AD, VTSR",
+    "flags": []
+  },
+  "16": {
+    "opcode": 16,
+    "mnemonic": "JMP HHLL",
+    "flags": []
+  },
+  "17": {
+    "opcode": 17,
+    "mnemonic": "JMC HHLL",
+    "flags": []
+  },
+  "18": {
+    "opcode": 18,
+    "mnemonic": "Jx HHLL",
+    "flags": []
+  },
+  "19": {
+    "opcode": 19,
+    "mnemonic": "JME RX, RY, HHLL",
+    "flags": []
+  },
+  "20": {
+    "opcode": 20,
+    "mnemonic": "CALL HHLL",
+    "flags": []
+  },
+  "21": {
+    "opcode": 21,
+    "mnemonic": "RET",
+    "flags": []
+  },
+  "22": {
+    "opcode": 22,
+    "mnemonic": "JMP RX",
+    "flags": []
+  },
+  "23": {
+    "opcode": 23,
+    "mnemonic": "Cx HHLL",
+    "flags": []
+  },
+  "24": {
+    "opcode": 24,
+    "mnemonic": "CALL RX",
+    "flags": []
+  },
+  "32": {
+    "opcode": 32,
+    "mnemonic": "LDI RX, HHLL",
+    "flags": []
+  },
+  "33": {
+    "opcode": 33,
+    "mnemonic": "LDI SP, HHLL",
+    "flags": []
+  },
+  "34": {
+    "opcode": 34,
+    "mnemonic": "LDM RX, HHLL",
+    "flags": []
+  },
+  "35": {
+    "opcode": 35,
+    "mnemonic": "LDM RX, RY",
+    "flags": []
+  },
+  "36": {
+    "opcode": 36,
+    "mnemonic": "MOV RX, RY",
+    "flags": []
+  },
+  "48": {
+    "opcode": 48,
+    "mnemonic": "STM RX, HHLL",
+    "flags": []
+  },
+  "49": {
+    "opcode": 49,
+    "mnemonic": "STM RX, RY",
+    "flags": []
+  },
+  "64": {
+    "opcode": 64,
+    "mnemonic": "ADDI RX, HHLL",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "65": {
+    "opcode": 65,
+    "mnemonic": "ADD RX, RY",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "66": {
+    "opcode": 66,
+    "mnemonic": "ADD RX, RY, RZ",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "80": {
+    "opcode": 80,
+    "mnemonic": "SUBI RX, HHLL",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "81": {
+    "opcode": 81,
+    "mnemonic": "SUB RX, RY",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "82": {
+    "opcode": 82,
+    "mnemonic": "SUB RX, RY, RZ",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "83": {
+    "opcode": 83,
+    "mnemonic": "CMPI RX, HHLL",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "84": {
+    "opcode": 84,
+    "mnemonic": "CMP RX, RY",
+    "flags": [
+      "C",
+      "Z",
+      "O",
+      "N"
+    ]
+  },
+  "96": {
+    "opcode": 96,
+    "mnemonic": "ANDI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "97": {
+    "opcode": 97,
+    "mnemonic": "AND RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "98": {
+    "opcode": 98,
+    "mnemonic": "AND RX, RY, RZ",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "99": {
+    "opcode": 99,
+    "mnemonic": "TSTI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "100": {
+    "opcode": 100,
+    "mnemonic": "TST RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "112": {
+    "opcode": 112,
+    "mnemonic": "ORI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "113": {
+    "opcode": 113,
+    "mnemonic": "OR RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "114": {
+    "opcode": 114,
+    "mnemonic": "OR RX, RY, RZ",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "128": {
+    "opcode": 128,
+    "mnemonic": "XORI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "129": {
+    "opcode": 129,
+    "mnemonic": "XOR RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "130": {
+    "opcode": 130,
+    "mnemonic": "XOR RX, RY, RZ",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "144": {
+    "opcode": 144,
+    "mnemonic": "MULI RX, HHLL",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "145": {
+    "opcode": 145,
+    "mnemonic": "MUL RX, RY",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "146": {
+    "opcode": 146,
+    "mnemonic": "MUL RX, RY, RZ",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "160": {
+    "opcode": 160,
+    "mnemonic": "DIVI RX, HHLL",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "161": {
+    "opcode": 161,
+    "mnemonic": "DIV RX, RY",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "162": {
+    "opcode": 162,
+    "mnemonic": "DIV RX, RY, RZ",
+    "flags": [
+      "C",
+      "Z",
+      "N"
+    ]
+  },
+  "163": {
+    "opcode": 163,
+    "mnemonic": "MODI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "164": {
+    "opcode": 164,
+    "mnemonic": "MOD RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "165": {
+    "opcode": 165,
+    "mnemonic": "MOD RX, RY, RZ",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "166": {
+    "opcode": 166,
+    "mnemonic": "REMI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "167": {
+    "opcode": 167,
+    "mnemonic": "REM RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "168": {
+    "opcode": 168,
+    "mnemonic": "REM RX, RY, RZ",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "176": {
+    "opcode": 176,
+    "mnemonic": "SAL RX, N",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "177": {
+    "opcode": 177,
+    "mnemonic": "SHR RX, N",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "178": {
+    "opcode": 178,
+    "mnemonic": "SAR RX, N",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "179": {
+    "opcode": 179,
+    "mnemonic": "SAL RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "180": {
+    "opcode": 180,
+    "mnemonic": "SHR RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "181": {
+    "opcode": 181,
+    "mnemonic": "SAR RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "192": {
+    "opcode": 192,
+    "mnemonic": "PUSH RX",
+    "flags": []
+  },
+  "193": {
+    "opcode": 193,
+    "mnemonic": "POP RX",
+    "flags": []
+  },
+  "194": {
+    "opcode": 194,
+    "mnemonic": "PUSHALL",
+    "flags": []
+  },
+  "195": {
+    "opcode": 195,
+    "mnemonic": "POPALL",
+    "flags": []
+  },
+  "196": {
+    "opcode": 196,
+    "mnemonic": "PUSHF",
+    "flags": []
+  },
+  "197": {
+    "opcode": 197,
+    "mnemonic": "POPF",
+    "flags": []
+  },
+  "208": {
+    "opcode": 208,
+    "mnemonic": "PAL HHLL",
+    "flags": []
+  },
+  "209": {
+    "opcode": 209,
+    "mnemonic": "PAL RX",
+    "flags": []
+  },
+  "224": {
+    "opcode": 224,
+    "mnemonic": "NOTI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "225": {
+    "opcode": 225,
+    "mnemonic": "NOT RX",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "226": {
+    "opcode": 226,
+    "mnemonic": "NOT RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "227": {
+    "opcode": 227,
+    "mnemonic": "NEGI RX, HHLL",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "228": {
+    "opcode": 228,
+    "mnemonic": "NEG RX",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  },
+  "229": {
+    "opcode": 229,
+    "mnemonic": "NEG RX, RY",
+    "flags": [
+      "Z",
+      "N"
+    ]
+  }
+}
