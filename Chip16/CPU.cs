@@ -352,7 +352,190 @@ namespace Chip16
 
             //================= 4x - Addition =================//
 
-            // TODO: BE MINDFUL OF FLAGS
+            // ADDI RX, HHLL
+            this[0x40] = delegate ()
+            {
+                Addition(ref R[X], R[X], HHLL);
+            };
+
+            // ADD RX, RY
+            this[0x41] = delegate () 
+            {
+                Addition(ref R[X], R[X], R[Y]);
+            };
+
+            // ADD RX, RY, RZ
+            this[0x42] = delegate ()
+            {
+                Addition(ref R[Z], R[X], R[Y]);
+            };
+
+            //================= 5x - Subtraction =================//
+
+            // SUBI RX, HHLL
+            this[0x50] = delegate ()
+            {
+                Subtraction(ref R[X], R[X], HHLL);
+            };
+
+            // SUB RX, RY
+            this[0x51] = delegate ()
+            {
+                Subtraction(ref R[X], R[X], R[Y]);
+            };
+
+            // SUB RX, RY, RZ
+            this[0x52] = delegate ()
+            {
+                Subtraction(ref R[Z], R[X], R[Y]);
+            };
+
+            // CMPI RX, HHLL
+            this[0x53] = delegate ()
+            {
+                UInt16 discard = 0; ;
+                Subtraction(ref discard, R[X], HHLL);
+            };
+
+            // CMP RX, RY
+            this[0x54] = delegate ()
+            {
+                UInt16 discard = 0; ;
+                Subtraction(ref discard, R[X], R[Y]);
+            };
+
+            //================= 6x - Bitwise AND (&) =================//
+
+            // ANDI RX, HHLL
+            this[0x60] = delegate ()
+            {
+                And(ref R[X], R[X], HHLL);
+            };
+
+            // AND RX, RY
+            this[0x61] = delegate ()
+            {
+                And(ref R[X], R[X], R[Y]);
+            };
+
+            // AND RX, RY, RZ
+            this[0x62] = delegate ()
+            {
+                And(ref R[Z], R[X], R[Y]);
+            };
+
+            // TSTI RX, HHLL
+            this[0x63] = delegate ()
+            {
+                UInt16 discard = 0;
+                And(ref discard, R[X], HHLL);
+            };
+
+            // TSTI RX, HHLL
+            this[0x63] = delegate ()
+            {
+                UInt16 discard = 0;
+                And(ref discard, R[X], R[Y]);
+            };
+
+            //================= 7x - Bitwise OR (|) =================//
+
+            // XORI RX, HHLL
+            this[0x70] = delegate ()
+            {
+                Or(ref R[X], R[X], HHLL);
+            };
+
+            // OR RX, RY
+            this[0x71] = delegate ()
+            {
+                Or(ref R[X], R[X], R[Y]);
+            };
+
+            // OR RX, RY, RZ
+            this[0x72] = delegate ()
+            {
+                Or(ref R[Z], R[X], R[Y]);
+            };
+
+            //================= 8x - Bitwise XOR (^) =================//
+
+            // XORI RX, HHLL
+            this[0x80] = delegate ()
+            {
+                XOR(ref R[X], R[X], HHLL);
+            };
+
+            // XOR RX, RY
+            this[0x81] = delegate ()
+            {
+                XOR(ref R[X], R[X], R[Y]);
+            };
+
+            // XOR RX, RY, RZ
+            this[0x82] = delegate ()
+            {
+                XOR(ref R[Z], R[X], R[Y]);
+            };
+
+            //================= 9x - Multiplication =================//
+
+            // MULI RX, HHLL
+            this[0x90] = delegate ()
+            {
+                Multiplication(ref R[X], R[X], HHLL);
+            };
+
+            // MUL RX, RY
+            this[0x91] = delegate ()
+            {
+                Multiplication(ref R[X], R[X], R[Y]);
+            };
+
+            // MUL RX, RY, RZ
+            this[0x92] = delegate ()
+            {
+                Multiplication(ref R[Z], R[X], R[Y]);
+            };
+
+            //================= Ax - Division =================//
+
+            // DIVI RX, HHLL
+            this[0xA0] = delegate ()
+            {
+                Division(ref R[X], R[X], HHLL);
+            };
+
+            // DIV RX, RY
+            this[0xA1] = delegate ()
+            {
+                Division(ref R[X], R[X], R[Y]);
+            };
+
+            // DIV RX, RY, RZ
+            this[0xA2] = delegate ()
+            {
+                Division(ref R[Z], R[X], R[Y]);
+            };
+
+            // MODI RX, HHLL or REMI RX, HHLL
+            this[0xA3] = this[0xA6] = delegate ()
+            {
+                MOD(ref R[X], R[X], HHLL);
+            };
+
+            // MOD RX, RY or REM RX, RY
+            this[0xA4] = this[0xA7] = delegate ()
+            {
+                MOD(ref R[X], R[X], R[Y]);
+            };
+
+            this[0xA5] = this[0xA8] = delegate ()
+            {
+                MOD(ref R[Z], R[X], R[Y]);
+            };
+
+            //================= Bx - Logical/Arithmetic Shifts =================//
         }
 
         private void Execute()
@@ -433,6 +616,80 @@ namespace Chip16
                 byte operand3 = (byte)((opcode & 0x000000FF) >> 0);
                 return new byte[] { operand1, operand2, operand3 };
             }
+        }
+
+        private void Addition(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 + operand2);
+            Flags.C = operand1 + operand2 > UInt16.MaxValue;
+            Flags.Z = store == 0x0000;
+            Flags.O = ((Int16)operand1 >= 0 && (Int16)operand2 >= 0 && (Int16)store < 0) || 
+                ((Int16)operand1 < 0 && (Int16)operand2 < 0 && (Int16)store >= 0); // Verify >= or >
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void Subtraction(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 - operand2);
+            Flags.C = (Int16)store < 0x0000;
+            Flags.Z = store == 0x0000;
+            Flags.O = ((Int16)store >= 0 && (Int16)operand1 < 0 && (Int16)operand2 >= 0) ||
+                ((Int16)store < 0 && (Int16)operand1 >= 0 && (Int16)operand2 < 0);
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void Multiplication(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 * operand2);
+            Flags.C = operand1 * operand2 > UInt16.MaxValue;
+            Flags.Z = store == 0x0000;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void Division(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 / operand2);
+            Flags.C = operand1 % operand2 != 0;
+            Flags.Z = store == 0x0000;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void MOD(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 % operand2);
+            Flags.Z = store == 0x0000;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void And(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 & operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void Or(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 | operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void XOR(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)(operand1 ^ operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void LeftShift(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+
+        }
+
+        private void RightShift(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+
         }
 
         private bool TestCondition(byte index)
