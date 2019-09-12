@@ -24,9 +24,11 @@ namespace Chip16
 
         // Flip sprite(s) to draw, horizontally
         private bool hflip = false;
+        public bool HFlip { get => this.hflip; set => this.hflip = value; }
 
         // Flip sprite(s) to draw, vertically
         private bool vflip = false;
+        public bool VFlip { get => this.vflip; set => this.vflip = value; }
 
         // The screen is updated at a frequency of 60 Hz. Every frame (~16.67ms), the internal VBLANK flag is raised, which can be waited on with the VBLNK instruction.
         public bool VBLANK
@@ -77,27 +79,43 @@ namespace Chip16
             }
         }
 
-        public bool DrawSprite(Memory memory, UInt16 HHLL, int X, int Y)
+        public bool DrawSprite(Memory memory, UInt16 HHLL, UInt32 X, UInt32 Y)
         {
             UInt16 memPos = HHLL;
-            int yStart = Y;
-            int yEnd = Y + SpriteH;
-            int yInc = 1;
-            int xStart = X;
-            int xEnd = X + SpriteW;
-            int xInc = 2;
+            UInt32 yStart = Y;
+            UInt32 yEnd = (UInt32)(Y + SpriteH);
+            UInt32 yInc = 1;
+            UInt32 xStart = X;
+            UInt32 xEnd = (UInt32)(X + SpriteW);
+            UInt32 xInc = 2;
+            UInt32 hit = 0;
 
-            for(int y = yStart; y < yEnd; y += yInc)
+            for(UInt32 y = yStart; y < yEnd; y += yInc)
             {
-                for(int x = xStart; x < xEnd; x += xInc)
+                for(UInt32 x = xStart; x < xEnd; x += xInc)
                 {
                     byte pixel = memory[memPos];
-                    byte highPixel = (byte)(pixel >> 4);
-                    byte lowPixel  = (byte)(pixel & 0x0F);
+                    byte highPixel = (byte)(pixel >> 4); // x
+                    byte lowPixel  = (byte)(pixel & 0x0F); // x + 1
+
+                    UInt32 drawX = HFlip ? xEnd - x - 2 : x;
+                    UInt32 drawY = VFlip ? yEnd - y - 1 : y;
+
+                    hit += this[drawY, drawX + 0u];
+                    hit += this[drawY, drawX + 1u];
+
+                    this[drawY, drawX + 0u] = HFlip ? lowPixel : highPixel;
+                    this[drawY, drawX + 1u] = HFlip ? highPixel : lowPixel;
                     memPos += 1;
                 }
             }
-            return false;
+            return hit > 0;
+        }
+
+        private byte this[UInt32 y, UInt32 x]
+        {
+            get => this.graphics[y, x];
+            set => this.graphics[y, x] = value;
         }
 
         public byte[,] RequestFrame()

@@ -8,5 +8,11 @@ namespace Chip16
 {
     class Sound
     {
+        public enum Tone
+        {
+            Hz500,
+            Hz1000,
+            Hz1500
+        }
     }
 }
