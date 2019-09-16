@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Chip16
 {
@@ -51,6 +47,48 @@ namespace Chip16
         {
             get { return this.memory[address]; }
             set { this.memory[address] = value; }
+        }
+
+        public UInt16 LoadRom(byte[] data)
+        {
+            // 16 byte header
+
+            // Magic Number = CH16 = 0x43483136, 0x43 = C, 0x48 = H, 0x31 = 1, 0x36 = 6
+            UInt32 magicNumber = (UInt32)((data[0x00] << 24) | (data[0x01] << 16) | (data[0x02] << 8) | (data[0x03] << 0));
+
+            // Unused reserved byte
+            byte reserved = data[0x04];
+
+            // Version of rom spec
+            byte specificationVersion = data[0x05];
+
+            // Excludes header
+            UInt32 romSize = (UInt32)((data[0x06] << 24) | (data[0x07] << 16) | (data[0x08] << 8) | (data[0x09] << 0));
+
+            // Initial value of PC
+            UInt16 startAddress = (UInt16)((data[0x0A] << 8) | (data[0x0B]) << 0);
+
+            // ROM checksum
+            UInt32 CRC32 = (UInt32)((data[0x0C] << 24) | (data[0x0D] << 16) | (data[0x0E] << 8) | (data[0x0F] << 0));
+
+            // Load ROM into memory
+
+            // First byte of ROM starts at 0x10, only ofset if rom has header
+            byte romOffset = (byte)(magicNumber == 0x43483136 ? 0x10 : 0x00);
+
+            for(UInt32 address = 0; address < memory.Length; ++address)
+            {
+                if(address + romOffset < data.Length)
+                {
+                    memory[address] = data[address + romOffset];
+                }
+                else
+                {
+                    memory[address] = 0x00;
+                }
+            }
+
+            return startAddress;
         }
     }
 }

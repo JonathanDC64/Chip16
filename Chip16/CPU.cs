@@ -36,26 +36,6 @@ namespace Chip16
 
             public Action Operation { get; set; }
 
-            //private Dictionary<string, Flags> flagMap = new Dictionary<string, Flags>()
-            //{
-            //    ["C"] = CPU.Flags.C,
-            //    ["Z"] = CPU.Flags.Z,
-            //    ["O"] = CPU.Flags.O,
-            //    ["N"] = CPU.Flags.N
-            //};
-            //
-            //[JsonConstructor]
-            //public Instruction(string Mnemonic, byte Opcode, List<string> Flags)
-            //{
-            //    this.Mnemonic = Mnemonic;
-            //    this.Opcode = Opcode;
-            //    this.Flags = new HashSet<Flags>();
-            //    foreach (string flag in Flags)
-            //    {
-            //        this.Flags.Add(flagMap[flag]);
-            //    }
-            //}
-
             public void Execute()
             {
                 this.Operation();
@@ -63,7 +43,7 @@ namespace Chip16
         }
 
         // 16 bit program counter
-        private UInt16 PC;
+        public UInt16 PC;
 
         // 16 bit stack pointer
         private UInt16 SP;
@@ -78,17 +58,21 @@ namespace Chip16
             public bool Z = false;
             public bool O = false;
             public bool N = false;
+
+            public byte Bits
+            {
+                get => (byte)((Convert.ToByte(C) << 1) | (Convert.ToByte(Z) << 2) | (Convert.ToByte(O) << 6) | (Convert.ToByte(N) << 7));
+                set
+                {
+                    C = (value & (1 << 1)) != 0;
+                    Z = (value & (1 << 2)) != 0;
+                    O = (value & (1 << 6)) != 0;
+                    N = (value & (1 << 7)) != 0;
+                }
+            }
         };
 
         private FLAGS Flags;
-
-        //public enum Flags
-        //{
-        //    C = 0x1, // Carry
-        //    Z = 0x2, // Zero
-        //    O = 0x6, // Overflow,
-        //    N = 0x7, // Negative
-        //}
 
         // Random number generator;
         private Random random;
@@ -98,11 +82,15 @@ namespace Chip16
 
         private Memory memory;
         private Graphics graphics;
+        private Input input;
+        private Sound sound;
 
-        public CPU(Memory memory, Graphics graphics)
+        public CPU(Memory memory, Graphics graphics, Input input, Sound sound)
         {
             this.memory = memory;
             this.graphics = graphics;
+            this.input = input;
+            this.sound = sound;
 
             // The registers should be interpreted as signed (two's complements representation, unless otherwise stated).
             this.PC = 0x0000;
@@ -133,13 +121,13 @@ namespace Chip16
             // VBLNK
             this[0x02] = delegate ()
             {
-                // TODO : Implement VBLANK
+                graphics.VBLANK = true;
             };
 
             // BGC N
             this[0x03] = delegate ()
             {
-                graphics.BG = this.Operand2;
+                graphics.SetBG(N);
             };
 
             // SPR HHLL
@@ -158,7 +146,7 @@ namespace Chip16
             // DRW RX, RY, RZ
             this[0x06] = delegate ()
             {
-                Flags.C = graphics.DrawSprite(memory, HHLL, X, Y);
+                Flags.C = graphics.DrawSprite(memory, R[Z], R[X], R[Y]);
             };
 
             // RND RX, HHLL
@@ -238,13 +226,17 @@ namespace Chip16
             this[0x10] = delegate ()
             {
                 PC = HHLL;
+                // PC -= 4;
             };
 
             // JMC HHLL
             this[0x11] = delegate ()
             {
                 if (Flags.C)
+                {
                     PC = HHLL;
+                    // PC -= 4;
+                }
             };
 
             // Jx HHLL
@@ -252,36 +244,45 @@ namespace Chip16
             {
                 // Branch if condition is true
                 if (TestCondition(X))
+                {
                     PC = HHLL;
+                    // PC -= 4;
+                }
             };
 
             // JME RX, RY, HHLL
             this[0x13] = delegate ()
             {
                 if (R[X] == R[Y])
+                {
                     PC = HHLL;
+                    // PC -= 4;
+                }
             };
 
             // CALL HHLL
             this[0x14] = delegate ()
             {
-                memory[(UInt16)(SP + 0u)] = (byte)(PC >> 8);
-                memory[(UInt16)(SP + 1u)] = (byte)(PC & 0x0F);
+                memory[(UInt16)(SP + 0u)] = (byte)(PC & 0x00FF);
+                memory[(UInt16)(SP + 1u)] = (byte)(PC >> 8);
                 SP += 2;
                 PC = HHLL;
+                // PC -= 4;
             };
 
             // RET
             this[0x15] = delegate ()
             {
                 SP -= 2;
-                PC = (UInt16)((memory[(UInt16)(SP + 0u)] << 8) | (memory[(UInt16)(SP + 1u)] << 0));
+                PC = (UInt16)((memory[(UInt16)(SP + 0u)] << 0) | (memory[(UInt16)(SP + 1u)] << 8));
+                // PC -= 4;
             };
 
             // JMP RX
             this[0x16] = delegate ()
             {
                 PC = R[X];
+                // PC -= 4;
             };
 
             // Cx HHLL
@@ -295,10 +296,11 @@ namespace Chip16
             // CALL RX
             this[0x18] = delegate ()
             {
-                memory[(UInt16)(SP + 0u)] = (byte)(PC >> 8);
-                memory[(UInt16)(SP + 1u)] = (byte)(PC & 0x0F);
+                memory[(UInt16)(SP + 0u)] = (byte)(PC & 0x00FF);
+                memory[(UInt16)(SP + 1u)] = (byte)(PC >> 8);
                 SP += 2;
                 PC = R[X];
+                // PC -= 4;
             };
 
 
@@ -339,20 +341,21 @@ namespace Chip16
             // STM RX, HHLL
             this[0x30] = delegate ()
             {
-                memory[(UInt16)(HHLL + 0u)] = (byte)(R[X] >> 8);
-                memory[(UInt16)(HHLL + 1u)] = (byte)(R[X] & 0x0F);
+                memory[(UInt16)(HHLL + 0u)] = (byte)(R[X] & 0x00FF);
+                memory[(UInt16)(HHLL + 1u)] = (byte)(R[X] >> 8);
             };
 
             // STM RX, RY
             this[0x31] = delegate ()
             {
-                memory[(UInt16)(R[Y] + 0u)] = (byte)(R[X] >> 8);
-                memory[(UInt16)(R[Y] + 1u)] = (byte)(R[X] & 0x0F);
+                memory[(UInt16)(R[Y] + 0u)] = (byte)(R[X] & 0x00FF);
+                memory[(UInt16)(R[Y] + 1u)] = (byte)(R[X] >> 8);
             };
 
             //================= 4x - Addition =================//
 
             // ADDI RX, HHLL
+
             this[0x40] = delegate ()
             {
                 Addition(ref R[X], R[X], HHLL);
@@ -463,19 +466,19 @@ namespace Chip16
             // XORI RX, HHLL
             this[0x80] = delegate ()
             {
-                XOR(ref R[X], R[X], HHLL);
+                Xor(ref R[X], R[X], HHLL);
             };
 
             // XOR RX, RY
             this[0x81] = delegate ()
             {
-                XOR(ref R[X], R[X], R[Y]);
+                Xor(ref R[X], R[X], R[Y]);
             };
 
             // XOR RX, RY, RZ
             this[0x82] = delegate ()
             {
-                XOR(ref R[Z], R[X], R[Y]);
+                Xor(ref R[Z], R[X], R[Y]);
             };
 
             //================= 9x - Multiplication =================//
@@ -521,28 +524,197 @@ namespace Chip16
             // MODI RX, HHLL or REMI RX, HHLL
             this[0xA3] = this[0xA6] = delegate ()
             {
-                MOD(ref R[X], R[X], HHLL);
+                Mod(ref R[X], R[X], HHLL);
             };
 
             // MOD RX, RY or REM RX, RY
             this[0xA4] = this[0xA7] = delegate ()
             {
-                MOD(ref R[X], R[X], R[Y]);
+                Mod(ref R[X], R[X], R[Y]);
             };
 
+            // MOD RX, RY, RZ or REM RX, RY, RZ
             this[0xA5] = this[0xA8] = delegate ()
             {
-                MOD(ref R[Z], R[X], R[Y]);
+                Mod(ref R[Z], R[X], R[Y]);
             };
 
             //================= Bx - Logical/Arithmetic Shifts =================//
+
+            // SHL RX, N
+            this[0xB0] = delegate ()
+            {
+                LeftShift(ref R[X], R[X], N);
+            };
+
+            // SHR RX, N
+            this[0xB1] = delegate ()
+            {
+                RightShift(ref R[X], R[X], N);
+            };
+
+            // SAR RX, N
+            this[0xB2] = delegate ()
+            {
+                // Todo: Verify
+                RightShift(ref R[X], R[X], N);
+            };
+
+            // SHL RX, RY
+            this[0xB3] = delegate ()
+            {
+                LeftShift(ref R[X], R[X], R[Y]);
+            };
+
+            // SHR RX, RY
+            this[0xB4] = delegate ()
+            {
+                RightShift(ref R[X], R[X], R[Y]);
+            };
+
+            // SAR RX, RY
+            this[0xB5] = delegate ()
+            {
+                // Todo: Verify
+                RightShift(ref R[X], R[X], R[Y]);
+            };
+
+            //================= Cx - Push/Pop =================//
+
+            // PUSH RX
+            this[0xC0] = delegate ()
+            {
+                memory[(UInt16)(SP + 0u)] = (byte)(R[X] & 0x00FF);
+                memory[(UInt16)(SP + 1u)] = (byte)(R[X] >> 8);
+                SP += 2;
+            };
+
+            // POP RX
+            this[0xC1] = delegate ()
+            {
+                SP -= 2;
+                R[X] = (UInt16)((memory[(UInt16)(SP + 1u)] << 8) | (memory[(UInt16)(SP + 0u)] << 0));
+            };
+
+            // PUSHALL
+            this[0xC2] = delegate ()
+            {
+                for(UInt16 i = 0; i < 16; ++i)
+                {
+                    memory[(UInt16)(SP + 0u)] = (byte)(R[i] & 0x00FF);
+                    memory[(UInt16)(SP + 1u)] = (byte)(R[i] >> 8);
+                    SP += 2;
+                }
+            };
+
+            // POPALL
+            this[0xC3] = delegate ()
+            {
+                for (UInt16 i = 15; i >= 0; --i)
+                {
+                    SP -= 2;
+                    R[i] = (UInt16)((memory[(UInt16)(SP + 0u)] << 0) | (memory[(UInt16)(SP + 1u)] << 8));
+                }
+            };
+
+            // PUSHF
+            this[0xC4] = delegate ()
+            {
+                memory[SP] = Flags.Bits;
+                SP += 2;
+            };
+
+            // POPF
+            this[0xC5] = delegate ()
+            {
+                SP -= 2;
+                Flags.Bits = memory[SP];
+            };
+
+            //================= Dx - Palette =================//
+
+            // PAL HHLL
+            this[0xD0] = delegate ()
+            {
+                UInt16 startAddress = HHLL;
+                for(byte i = 0; i < 16; ++i)
+                {
+                    UInt16 address = (UInt16)(startAddress + (i * 3));
+                    UInt32 color = (UInt16)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
+                    graphics.Palette[i] = color;
+                }
+            };
+
+            // PAL RX
+            this[0xD1] = delegate ()
+            {
+                UInt16 startAddress = R[X];
+                for (byte i = 0; i < 16; ++i)
+                {
+                    UInt16 address = (UInt16)(startAddress + (i * 3));
+                    UInt32 color = (UInt16)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
+                    graphics.Palette[i] = color;
+                }
+            };
+
+            //================= Ex - Not/Neg =================//
+
+            // NOTI RX, HHLL
+            this[0xE0] = delegate ()
+            {
+                Not(ref R[X], HHLL);
+            };
+
+            // NOT RX
+            this[0xE1] = delegate ()
+            {
+                Not(ref R[X], R[X]);
+            };
+
+            // NOT RX, RY
+            this[0xE2] = delegate ()
+            {
+                Not(ref R[X], R[Y]);
+            };
+
+            // NEGI RX, HHLL
+            this[0xE3] = delegate ()
+            {
+                Negate(ref R[X], HHLL);
+            };
+
+            // NEG RX
+            this[0xE4] = delegate ()
+            {
+                Negate(ref R[X], R[X]);
+            };
+
+            // NEG RX, RY
+            this[0xE5] = delegate ()
+            {
+                Negate(ref R[X], R[Y]);
+            };
         }
 
-        private void Execute()
+        public void Execute()
         {
+            Console.WriteLine($"{instructions[InstructionCode].Mnemonic} : {Opcode.ToString("x")}");
+            Opcode = this.memory.ReadOpcode((UInt16)this.PC);
+            InstructionCode = (byte)(Opcode >> 24);
+            Operand1 = (byte)((Opcode & 0x00FF0000) >> 16);
+            Operand2 = (byte)((Opcode & 0x0000FF00) >> 8);
+            Operand3 = (byte)((Opcode & 0x000000FF) >> 0);
+            HHLL = (UInt16)((Operand3 << 8) | (Operand2 << 0));
+            HH = Operand3;
+            LL = Operand2;
+            Z = (byte)((Operand2 & 0x0F) >> 0);
+            Y = (byte)((Operand1 & 0xF0) >> 4);
+            X = (byte)((Operand1 & 0x0F) >> 0);
+            N = (byte)((Operand2 & 0x0F) >> 0);
+            this.PC += 4;
             // Execute Current instruction
             this[InstructionCode]();
-            this.PC += 4;
+            
         }
 
         private Action this[byte opcode]
@@ -553,78 +725,144 @@ namespace Chip16
 
         private UInt32 Opcode
         {
-            get => this.memory.ReadOpcode((UInt16)this.PC);
+            get; set;
         }
 
         private byte InstructionCode
         {
-            get => (byte)(Opcode >> 24);
+            get; set;
         }
 
         private byte Operand1
         {
-            get => (byte)((Opcode & 0x00FF0000) >> 16);
+            get; set;
         }
 
         private byte Operand2
         {
-            get => (byte)((Opcode & 0x0000FF00) >> 8);
+            get; set;
         }
 
         private byte Operand3
         {
-            get => (byte)((Opcode & 0x000000FF) >> 0);
+            get; set;
         }
 
         private UInt16 HHLL
         {
-            get => (UInt16)((Operand3 << 8) | (Operand2 << 0));
+            get; set;
         }
 
         private byte HH
         {
-            get => Operand3;
+            get; set;
         }
 
         private byte LL
         {
-            get => Operand2;
+            get; set;
         }
 
         private byte Z
         {
-            get => (byte)((Operand2 & 0x0F) >> 0);
+            get; set;
         }
 
         private byte Y
         {
-            get => (byte)((Operand1 & 0xF0) >> 4);
+            get; set;
         }
 
         private byte X
         {
-            get => (byte)((Operand1 & 0x0F) >> 0);
+            get; set;
         }
 
-        private byte[] Operands
+        private byte N
         {
-            get
-            {
-                UInt32 opcode = this.memory.ReadOpcode((UInt16)this.PC);
-                byte operand1 = (byte)((opcode & 0x00FF0000) >> 16);
-                byte operand2 = (byte)((opcode & 0x0000FF00) >> 8);
-                byte operand3 = (byte)((opcode & 0x000000FF) >> 0);
-                return new byte[] { operand1, operand2, operand3 };
-            }
+            get; set;
         }
+
+        //private UInt32 Opcode
+        //{
+        //    get => this.memory.ReadOpcode((UInt16)this.PC);
+        //}
+        //
+        //private byte InstructionCode
+        //{
+        //    get => (byte)(Opcode >> 24);
+        //}
+        //
+        //private byte Operand1
+        //{
+        //    get => (byte)((Opcode & 0x00FF0000) >> 16);
+        //}
+        //
+        //private byte Operand2
+        //{
+        //    get => (byte)((Opcode & 0x0000FF00) >> 8);
+        //}
+        //
+        //private byte Operand3
+        //{
+        //    get => (byte)((Opcode & 0x000000FF) >> 0);
+        //}
+        //
+        //private UInt16 HHLL
+        //{
+        //    get => (UInt16)((Operand3 << 8) | (Operand2 << 0));
+        //}
+        //
+        //private byte HH
+        //{
+        //    get => Operand3;
+        //}
+        //
+        //private byte LL
+        //{
+        //    get => Operand2;
+        //}
+        //
+        //private byte Z
+        //{
+        //    get => (byte)((Operand2 & 0x0F) >> 0);
+        //}
+        //
+        //private byte Y
+        //{
+        //    get => (byte)((Operand1 & 0xF0) >> 4);
+        //}
+        //
+        //private byte X
+        //{
+        //    get => (byte)((Operand1 & 0x0F) >> 0);
+        //}
+        //
+        //private byte N
+        //{
+        //    get => (byte)((Operand2 & 0x0F) >> 0);
+        //}
+        //
+        //private byte[] Operands
+        //{
+        //    get
+        //    {
+        //        UInt32 opcode = this.memory.ReadOpcode((UInt16)this.PC);
+        //        byte operand1 = (byte)((opcode & 0x00FF0000) >> 16);
+        //        byte operand2 = (byte)((opcode & 0x0000FF00) >> 8);
+        //        byte operand3 = (byte)((opcode & 0x000000FF) >> 0);
+        //        return new byte[] { operand1, operand2, operand3 };
+        //    }
+        //}
 
         private void Addition(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 + operand2);
-            Flags.C = operand1 + operand2 > UInt16.MaxValue;
+            Flags.C = (UInt16)(operand1 + operand2) > UInt16.MaxValue;
             Flags.Z = store == 0x0000;
-            Flags.O = ((Int16)operand1 >= 0 && (Int16)operand2 >= 0 && (Int16)store < 0) || 
-                ((Int16)operand1 < 0 && (Int16)operand2 < 0 && (Int16)store >= 0); // Verify >= or >
+            Flags.O = (((Int16)operand1 < 0) == ((Int16)operand2 < 0)) && (((Int16)operand1 < 0) != ((Int16)store < 0));
+            //Flags.O = ((Int16)operand1 >= 0 && (Int16)operand2 >= 0 && (Int16)store < 0) || 
+            //    ((Int16)operand1 < 0 && (Int16)operand2 < 0 && (Int16)store >= 0); // Verify >= or >
             Flags.N = (Int16)(store) < 0;
         }
 
@@ -641,7 +879,7 @@ namespace Chip16
         private void Multiplication(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 * operand2);
-            Flags.C = operand1 * operand2 > UInt16.MaxValue;
+            Flags.C = (UInt16)(operand1 * operand2) > UInt16.MaxValue;
             Flags.Z = store == 0x0000;
             Flags.N = (Int16)(store) < 0;
         }
@@ -649,12 +887,19 @@ namespace Chip16
         private void Division(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 / operand2);
-            Flags.C = operand1 % operand2 != 0;
+            Flags.C = (Int16)operand1 % (Int16)operand2 != 0;
             Flags.Z = store == 0x0000;
             Flags.N = (Int16)(store) < 0;
         }
 
-        private void MOD(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        private void Negate(ref UInt16 store, UInt16 operand1)
+        {
+            store = (UInt16)(-operand1);
+            Flags.Z = store == 0x0000;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void Mod(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 % operand2);
             Flags.Z = store == 0x0000;
@@ -675,21 +920,32 @@ namespace Chip16
             Flags.N = (Int16)(store) < 0;
         }
 
-        private void XOR(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        private void Xor(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 ^ operand2);
             Flags.Z = store == 0;
             Flags.N = (Int16)(store) < 0;
         }
 
+        private void Not(ref UInt16 store, UInt16 operand1)
+        {
+            store = (UInt16)(~operand1);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
+        }
+
         private void LeftShift(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
-
+            store = (UInt16)(operand1 << operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
         }
 
         private void RightShift(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
-
+            store = (UInt16)(operand1 >> operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
         }
 
         private bool TestCondition(byte index)

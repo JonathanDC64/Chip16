@@ -13,9 +13,8 @@ namespace FrontEnd
         [STAThread]
         static void Main()
         {
-            Chip16.CPU cpu = new Chip16.CPU(new Chip16.Memory(), new Chip16.Graphics());
-            //using (var game = new Game1())
-            //    game.Run();
+            using (var game = new FrontEnd())
+                game.Run();
         }
     }
 }

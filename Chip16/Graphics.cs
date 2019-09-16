@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Chip16
 {
@@ -45,26 +42,32 @@ namespace Chip16
             {0x0, 0x000000}, // Black (transp. in FG)
             {0x1, 0x000000}, // Black
             {0x2, 0x888888}, // Gray
-            {0x3, 0xBF3932}, // Red
-            {0x4, 0xDE7AAE}, // Pink
-            {0x5, 0x4C3D21}, // Dark brown
-            {0x6, 0x905F25}, // Brown
-            {0x7, 0xE49452}, // Orange
-            {0x8, 0xEAD979}, // Yellow
-            {0x9, 0x537A3B}, // Green
-            {0xA, 0xABD54A}, // Light green
-            {0xB, 0x252E38}, // Dark blue
-            {0xC, 0x00467F}, // Blue
-            {0xD, 0x68ABCC}, // Light blue
-            {0xE, 0xBCDEE4}, // Sky blue
+            {0x3, 0x3239BF}, // Red
+            {0x4, 0xAE7ADE}, // Pink
+            {0x5, 0x213D4C}, // Dark brown
+            {0x6, 0x255F90}, // Brown
+            {0x7, 0x5294E4}, // Orange
+            {0x8, 0x79D9EA}, // Yellow
+            {0x9, 0x3B7A53}, // Green
+            {0xA, 0x4AD5AB}, // Light green
+            {0xB, 0x382E25}, // Dark blue
+            {0xC, 0x7F4600}, // Blue
+            {0xD, 0xCCAB68}, // Light blue
+            {0xE, 0xE4DEBC}, // Sky blue
             {0xF, 0xFFFFFF}  // White
         };
+
+        public Dictionary<byte, UInt32> Palette
+        {
+            get => palette;
+        }
 
         public Graphics()
         {
             // Chip16 uses a 320x240 screen resolution. The screen is updated at a frequency of 60 Hz. 
             // Every frame (~16.67ms), the internal VBLANK flag is raised, which can be waited on with the VBLNK instruction.
-            this.graphics = new byte[240,320];
+            this.graphics = new byte[HEIGHT,WIDTH];
+            this.VBLANK = false;
         }
 
         public void Clear()
@@ -79,40 +82,62 @@ namespace Chip16
             }
         }
 
-        public bool DrawSprite(Memory memory, UInt16 HHLL, UInt32 X, UInt32 Y)
+        public void SetBG(byte bg)
+        {
+            this.bg = bg;
+            for (int y = 0; y < HEIGHT; ++y)
+            {
+                for (int x = 0; x < WIDTH; ++x)
+                {
+                    if(this.graphics[y, x] == 0x00)
+                    {
+                        this.graphics[y, x] = this.bg;
+                    }
+                }
+            }
+        }
+
+        public bool DrawSprite(Memory memory, UInt16 HHLL, Int32 X, Int32 Y)
         {
             UInt16 memPos = HHLL;
-            UInt32 yStart = Y;
-            UInt32 yEnd = (UInt32)(Y + SpriteH);
-            UInt32 yInc = 1;
-            UInt32 xStart = X;
-            UInt32 xEnd = (UInt32)(X + SpriteW);
-            UInt32 xInc = 2;
-            UInt32 hit = 0;
+            Int32 yStart = Y;
+            Int32 yEnd = (Int32)(Y + SpriteH);
+            Int32 yInc = 1;
+            Int32 xStart = X;
+            Int32 xEnd = (Int32)(X + (SpriteW * 2));
+            Int32 xInc = 2;
+            Int32 hit = 0;
 
-            for(UInt32 y = yStart; y < yEnd; y += yInc)
+            for(Int32 y = yStart; y < yEnd; y += yInc)
             {
-                for(UInt32 x = xStart; x < xEnd; x += xInc)
+                for(Int32 x = xStart; x < xEnd; x += xInc)
                 {
                     byte pixel = memory[memPos];
                     byte highPixel = (byte)(pixel >> 4); // x
                     byte lowPixel  = (byte)(pixel & 0x0F); // x + 1
 
-                    UInt32 drawX = HFlip ? xEnd - x - 2 : x;
-                    UInt32 drawY = VFlip ? yEnd - y - 1 : y;
+                    Int32 drawX = HFlip ? xEnd - x - 2 : x;
+                    Int32 drawY = VFlip ? yEnd - y - 1 : y;
 
-                    hit += this[drawY, drawX + 0u];
-                    hit += this[drawY, drawX + 1u];
+                    if(drawX >= 0 && drawX < WIDTH && drawY >= 0 && drawY < HEIGHT)
+                    {
+                        hit += this[drawY, drawX + 0];
+                        this[drawY, drawX + 0] = HFlip ? lowPixel : highPixel;
+                        
+                        if(drawX + 1 >= 0 && drawX + 1 < WIDTH)
+                        {
+                            hit += this[drawY, drawX + 1];
+                            this[drawY, drawX + 1] = HFlip ? highPixel : lowPixel;
+                        }
+                    }
 
-                    this[drawY, drawX + 0u] = HFlip ? lowPixel : highPixel;
-                    this[drawY, drawX + 1u] = HFlip ? highPixel : lowPixel;
                     memPos += 1;
                 }
             }
             return hit > 0;
         }
 
-        private byte this[UInt32 y, UInt32 x]
+        public byte this[Int32 y, Int32 x]
         {
             get => this.graphics[y, x];
             set => this.graphics[y, x] = value;
