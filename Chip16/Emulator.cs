@@ -10,6 +10,7 @@ namespace Chip16
         private readonly CPU cpu;
         private readonly Input input;
         private readonly Graphics graphics;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Code Quality", "IDE0052:Remove unread private members", Justification = "<Pending>")]
         private readonly Sound sound;
 
         public Emulator()
@@ -18,7 +19,7 @@ namespace Chip16
             this.graphics = new Graphics();
             this.input = new Input();
             this.sound = new Sound();
-            this.cpu = new CPU(this.memory, this.graphics, this.input, this.sound);
+            this.cpu = new CPU(this.memory, this.graphics);
         }
 
         public void LoadRom(string filePath)
@@ -32,26 +33,25 @@ namespace Chip16
             this.cpu.Execute();
         }
 
+        private UInt32 ARGBtoABGR(UInt32 argb)
+        {
+            return ((argb & 0xFF000000) << 0) | ((argb & 0x000000FF) << 16) | ((argb & 0x0000FF00) << 0) | ((argb & 0x00FF0000) >> 16);
+        }
+
         public UInt32[] PixelData
         {
             get
             {
                 UInt32[] pixels = new UInt32[Graphics.WIDTH * Graphics.HEIGHT];
+                UInt32 BGColor = ARGBtoABGR((UInt32)((this.graphics.Palette[this.graphics.BG])));
 
                 for (Int32 y = 0; y < Graphics.HEIGHT; ++y)
                 {
                     for (Int32 x = 0; x < Graphics.WIDTH; ++x)
                     {
                         byte pixel = this.graphics[y, x];
-                        if (pixel > 0x00)
-                        {
-                            UInt32 color = this.graphics.Palette[pixel];
-                            pixels[y * Graphics.WIDTH + x] = (UInt32)((color) | (0xFF << 24));
-                        }
-                        else // If pixel index == 0, draw transparent
-                        {
-                            pixels[y * Graphics.WIDTH + x] = (UInt32)0x00000000; // alpha is 0
-                        }
+                        UInt32 color = ARGBtoABGR(this.graphics.Palette[pixel]);
+                        pixels[y * Graphics.WIDTH + x] = pixel > 0 ? color : BGColor;
                     }
                 }
                 return pixels;

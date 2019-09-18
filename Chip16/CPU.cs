@@ -49,7 +49,7 @@ namespace Chip16
         private UInt16 SP;
 
         // 16x 16 bit general purpose registers (R0..RF)
-        private UInt16[] R;
+        private readonly UInt16[] R;
 
         // 8 bit flag register
         private class FLAGS
@@ -72,25 +72,47 @@ namespace Chip16
             }
         };
 
-        private FLAGS Flags;
+        private readonly FLAGS Flags;
 
         // Random number generator;
-        private Random random;
+        private readonly Random random;
+
+        // Stateful values //
+
+        private UInt32 Opcode;
+
+        private byte InstructionCode;
+
+        private byte Operand1;
+
+        private byte Operand2;
+
+        private byte Operand3;
+
+        private UInt16 HHLL;
+
+        private byte HH;
+
+        private byte LL;
+
+        private byte Z;
+
+        private byte Y;
+
+        private byte X;
+
+        private byte N;
 
         // Maps opcodes to Instructions
-        private Dictionary<byte, Instruction> instructions;
+        private readonly Dictionary<byte, Instruction> instructions;
 
-        private Memory memory;
-        private Graphics graphics;
-        private Input input;
-        private Sound sound;
+        private readonly Memory memory;
+        private readonly Graphics graphics;
 
-        public CPU(Memory memory, Graphics graphics, Input input, Sound sound)
+        public CPU(Memory memory, Graphics graphics)
         {
             this.memory = memory;
             this.graphics = graphics;
-            this.input = input;
-            this.sound = sound;
 
             // The registers should be interpreted as signed (two's complements representation, unless otherwise stated).
             this.PC = 0x0000;
@@ -127,7 +149,7 @@ namespace Chip16
             // BGC N
             this[0x03] = delegate ()
             {
-                graphics.SetBG(N);
+                graphics.BG = N;
             };
 
             // SPR HHLL
@@ -153,7 +175,7 @@ namespace Chip16
             this[0x07] = delegate ()
             {
                 // Random number between [0, HHLL] Inclusively
-                R[X] = (UInt16)random.Next(HHLL + 1); // TODO: verify that the + 1 is needed
+                R[X] = (UInt16)random.Next(HHLL + 1);
             };
 
             // FLIP 0, 0 or FLIP 0, 1 or FLIP 1, 0 or FLIP 1, 1
@@ -226,7 +248,6 @@ namespace Chip16
             this[0x10] = delegate ()
             {
                 PC = HHLL;
-                // PC -= 4;
             };
 
             // JMC HHLL
@@ -235,7 +256,6 @@ namespace Chip16
                 if (Flags.C)
                 {
                     PC = HHLL;
-                    // PC -= 4;
                 }
             };
 
@@ -246,7 +266,6 @@ namespace Chip16
                 if (TestCondition(X))
                 {
                     PC = HHLL;
-                    // PC -= 4;
                 }
             };
 
@@ -256,33 +275,28 @@ namespace Chip16
                 if (R[X] == R[Y])
                 {
                     PC = HHLL;
-                    // PC -= 4;
                 }
             };
 
             // CALL HHLL
             this[0x14] = delegate ()
             {
-                memory[(UInt16)(SP + 0u)] = (byte)(PC & 0x00FF);
-                memory[(UInt16)(SP + 1u)] = (byte)(PC >> 8);
+                memory.SetWord(SP, PC);
                 SP += 2;
                 PC = HHLL;
-                // PC -= 4;
             };
 
             // RET
             this[0x15] = delegate ()
             {
                 SP -= 2;
-                PC = (UInt16)((memory[(UInt16)(SP + 0u)] << 0) | (memory[(UInt16)(SP + 1u)] << 8));
-                // PC -= 4;
+                PC = memory.ReadWord(SP);
             };
 
             // JMP RX
             this[0x16] = delegate ()
             {
                 PC = R[X];
-                // PC -= 4;
             };
 
             // Cx HHLL
@@ -296,11 +310,9 @@ namespace Chip16
             // CALL RX
             this[0x18] = delegate ()
             {
-                memory[(UInt16)(SP + 0u)] = (byte)(PC & 0x00FF);
-                memory[(UInt16)(SP + 1u)] = (byte)(PC >> 8);
+                memory.SetWord(SP, PC);
                 SP += 2;
                 PC = R[X];
-                // PC -= 4;
             };
 
 
@@ -321,13 +333,13 @@ namespace Chip16
             // LDM RX, HHLL
             this[0x22] = delegate ()
             {
-                R[X] = memory[HHLL];
+                R[X] = memory.ReadWord(HHLL);
             };
 
             // LDM RX, RY
             this[0x23] = delegate ()
             {
-                R[X] = memory[R[Y]];
+                R[X] = memory.ReadWord(R[Y]);
             };
 
             // MOV RX, RY
@@ -341,15 +353,13 @@ namespace Chip16
             // STM RX, HHLL
             this[0x30] = delegate ()
             {
-                memory[(UInt16)(HHLL + 0u)] = (byte)(R[X] & 0x00FF);
-                memory[(UInt16)(HHLL + 1u)] = (byte)(R[X] >> 8);
+                memory.SetWord(HHLL, R[X]);
             };
 
             // STM RX, RY
             this[0x31] = delegate ()
             {
-                memory[(UInt16)(R[Y] + 0u)] = (byte)(R[X] & 0x00FF);
-                memory[(UInt16)(R[Y] + 1u)] = (byte)(R[X] >> 8);
+                memory.SetWord(R[Y], R[X]);
             };
 
             //================= 4x - Addition =================//
@@ -443,7 +453,7 @@ namespace Chip16
 
             //================= 7x - Bitwise OR (|) =================//
 
-            // XORI RX, HHLL
+            // ORI RX, HHLL
             this[0x70] = delegate ()
             {
                 Or(ref R[X], R[X], HHLL);
@@ -557,7 +567,7 @@ namespace Chip16
             this[0xB2] = delegate ()
             {
                 // Todo: Verify
-                RightShift(ref R[X], R[X], N);
+                RightShiftSigned(ref R[X], R[X], N);
             };
 
             // SHL RX, RY
@@ -576,7 +586,7 @@ namespace Chip16
             this[0xB5] = delegate ()
             {
                 // Todo: Verify
-                RightShift(ref R[X], R[X], R[Y]);
+                RightShiftSigned(ref R[X], R[X], R[Y]);
             };
 
             //================= Cx - Push/Pop =================//
@@ -584,8 +594,7 @@ namespace Chip16
             // PUSH RX
             this[0xC0] = delegate ()
             {
-                memory[(UInt16)(SP + 0u)] = (byte)(R[X] & 0x00FF);
-                memory[(UInt16)(SP + 1u)] = (byte)(R[X] >> 8);
+                memory.SetWord(SP, R[X]);
                 SP += 2;
             };
 
@@ -593,7 +602,7 @@ namespace Chip16
             this[0xC1] = delegate ()
             {
                 SP -= 2;
-                R[X] = (UInt16)((memory[(UInt16)(SP + 1u)] << 8) | (memory[(UInt16)(SP + 0u)] << 0));
+                R[X] = memory.ReadWord(SP);
             };
 
             // PUSHALL
@@ -601,8 +610,7 @@ namespace Chip16
             {
                 for(UInt16 i = 0; i < 16; ++i)
                 {
-                    memory[(UInt16)(SP + 0u)] = (byte)(R[i] & 0x00FF);
-                    memory[(UInt16)(SP + 1u)] = (byte)(R[i] >> 8);
+                    memory.SetWord(SP, R[i]);
                     SP += 2;
                 }
             };
@@ -613,7 +621,7 @@ namespace Chip16
                 for (UInt16 i = 15; i >= 0; --i)
                 {
                     SP -= 2;
-                    R[i] = (UInt16)((memory[(UInt16)(SP + 0u)] << 0) | (memory[(UInt16)(SP + 1u)] << 8));
+                    R[i] = memory.ReadWord(SP);
                 }
             };
 
@@ -640,7 +648,7 @@ namespace Chip16
                 for(byte i = 0; i < 16; ++i)
                 {
                     UInt16 address = (UInt16)(startAddress + (i * 3));
-                    UInt32 color = (UInt16)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
+                    UInt32 color = (UInt32)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
                     graphics.Palette[i] = color;
                 }
             };
@@ -652,7 +660,7 @@ namespace Chip16
                 for (byte i = 0; i < 16; ++i)
                 {
                     UInt16 address = (UInt16)(startAddress + (i * 3));
-                    UInt32 color = (UInt16)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
+                    UInt32 color = (UInt32)((memory[(UInt16)(address + 0u)] << 16) | (memory[(UInt16)(address + 1u)] << 8) | (memory[(UInt16)(address + 2u)] << 0));
                     graphics.Palette[i] = color;
                 }
             };
@@ -723,142 +731,10 @@ namespace Chip16
             set => this.instructions[opcode].Operation = value;
         }
 
-        private UInt32 Opcode
-        {
-            get; set;
-        }
-
-        private byte InstructionCode
-        {
-            get; set;
-        }
-
-        private byte Operand1
-        {
-            get; set;
-        }
-
-        private byte Operand2
-        {
-            get; set;
-        }
-
-        private byte Operand3
-        {
-            get; set;
-        }
-
-        private UInt16 HHLL
-        {
-            get; set;
-        }
-
-        private byte HH
-        {
-            get; set;
-        }
-
-        private byte LL
-        {
-            get; set;
-        }
-
-        private byte Z
-        {
-            get; set;
-        }
-
-        private byte Y
-        {
-            get; set;
-        }
-
-        private byte X
-        {
-            get; set;
-        }
-
-        private byte N
-        {
-            get; set;
-        }
-
-        //private UInt32 Opcode
-        //{
-        //    get => this.memory.ReadOpcode((UInt16)this.PC);
-        //}
-        //
-        //private byte InstructionCode
-        //{
-        //    get => (byte)(Opcode >> 24);
-        //}
-        //
-        //private byte Operand1
-        //{
-        //    get => (byte)((Opcode & 0x00FF0000) >> 16);
-        //}
-        //
-        //private byte Operand2
-        //{
-        //    get => (byte)((Opcode & 0x0000FF00) >> 8);
-        //}
-        //
-        //private byte Operand3
-        //{
-        //    get => (byte)((Opcode & 0x000000FF) >> 0);
-        //}
-        //
-        //private UInt16 HHLL
-        //{
-        //    get => (UInt16)((Operand3 << 8) | (Operand2 << 0));
-        //}
-        //
-        //private byte HH
-        //{
-        //    get => Operand3;
-        //}
-        //
-        //private byte LL
-        //{
-        //    get => Operand2;
-        //}
-        //
-        //private byte Z
-        //{
-        //    get => (byte)((Operand2 & 0x0F) >> 0);
-        //}
-        //
-        //private byte Y
-        //{
-        //    get => (byte)((Operand1 & 0xF0) >> 4);
-        //}
-        //
-        //private byte X
-        //{
-        //    get => (byte)((Operand1 & 0x0F) >> 0);
-        //}
-        //
-        //private byte N
-        //{
-        //    get => (byte)((Operand2 & 0x0F) >> 0);
-        //}
-        //
-        //private byte[] Operands
-        //{
-        //    get
-        //    {
-        //        UInt32 opcode = this.memory.ReadOpcode((UInt16)this.PC);
-        //        byte operand1 = (byte)((opcode & 0x00FF0000) >> 16);
-        //        byte operand2 = (byte)((opcode & 0x0000FF00) >> 8);
-        //        byte operand3 = (byte)((opcode & 0x000000FF) >> 0);
-        //        return new byte[] { operand1, operand2, operand3 };
-        //    }
-        //}
-
         private void Addition(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 + operand2);
-            Flags.C = (UInt16)(operand1 + operand2) > UInt16.MaxValue;
+            Flags.C = (UInt32)(operand1 + operand2) > UInt16.MaxValue;
             Flags.Z = store == 0x0000;
             Flags.O = (((Int16)operand1 < 0) == ((Int16)operand2 < 0)) && (((Int16)operand1 < 0) != ((Int16)store < 0));
             //Flags.O = ((Int16)operand1 >= 0 && (Int16)operand2 >= 0 && (Int16)store < 0) || 
@@ -879,7 +755,7 @@ namespace Chip16
         private void Multiplication(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 * operand2);
-            Flags.C = (UInt16)(operand1 * operand2) > UInt16.MaxValue;
+            Flags.C = (UInt32)(operand1 * operand2) > UInt16.MaxValue;
             Flags.Z = store == 0x0000;
             Flags.N = (Int16)(store) < 0;
         }
@@ -944,6 +820,13 @@ namespace Chip16
         private void RightShift(ref UInt16 store, UInt16 operand1, UInt16 operand2)
         {
             store = (UInt16)(operand1 >> operand2);
+            Flags.Z = store == 0;
+            Flags.N = (Int16)(store) < 0;
+        }
+
+        private void RightShiftSigned(ref UInt16 store, UInt16 operand1, UInt16 operand2)
+        {
+            store = (UInt16)((Int16)operand1 >> (Int16)operand2);
             Flags.Z = store == 0;
             Flags.N = (Int16)(store) < 0;
         }

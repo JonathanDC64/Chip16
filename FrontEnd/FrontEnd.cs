@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Audio;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 using System.Collections.Generic;
 
 namespace FrontEnd
@@ -11,7 +12,7 @@ namespace FrontEnd
     /// </summary>
     public class FrontEnd : Game
     {
-        private GraphicsDeviceManager graphics;
+        private readonly GraphicsDeviceManager graphics;
         private SpriteBatch spriteBatch;
 
         private SpriteBatch targetBatch;
@@ -24,7 +25,9 @@ namespace FrontEnd
         private Texture2D frameBuffer;
         private Rectangle drawDestination;
 
-        private Dictionary<Keys, int> keyMap = new Dictionary<Keys, int>()
+        private EmulatorControls emulatorControls;
+
+        private readonly Dictionary<Keys, int> keyMap = new Dictionary<Keys, int>()
         {
             [Keys.Up] = 0,
             [Keys.Down] = 1,
@@ -52,18 +55,19 @@ namespace FrontEnd
         /// </summary>
         protected override void Initialize()
         {
+            //this.emulatorControls = new EmulatorControls(this);
+            //this.Components.Add(this.emulatorControls);
             this.Window.Title = "Chip16 Emulator";
             this.targetBatch = new SpriteBatch(GraphicsDevice);
             this.target = new RenderTarget2D(GraphicsDevice, (int)Chip16.Graphics.WIDTH, (int)Chip16.Graphics.HEIGHT);
 
             this.emulator = new Chip16.Emulator();
-            this.emulator.LoadRom("../../../../../Roms/Games/Ninja.c16");
-
+            this.emulator.LoadRom("../../../../../Roms/Demos/Mandel.c16");
             this.audio = new DynamicSoundEffectInstance(15360, AudioChannels.Mono);
             this.audio.Play();
 
             this.input = new bool[8];
-
+            
             this.frameBuffer = new Texture2D(GraphicsDevice, (int)Chip16.Graphics.WIDTH, (int)Chip16.Graphics.HEIGHT);
             this.drawDestination = new Rectangle(0, 0, Window.ClientBounds.Width, Window.ClientBounds.Height);
 
@@ -76,6 +80,7 @@ namespace FrontEnd
             this.graphics.PreferredBackBufferWidth = (int)Chip16.Graphics.WIDTH * 2;
             this.graphics.PreferredBackBufferHeight = (int)Chip16.Graphics.HEIGHT * 2;
             this.graphics.ApplyChanges();
+            
             base.Initialize();
         }
 
@@ -87,6 +92,7 @@ namespace FrontEnd
         {
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
+            
         }
 
         /// <summary>
@@ -117,9 +123,10 @@ namespace FrontEnd
 
             emulator.SetKeyState(this.input);
 
-            while (cycles < (1000000 / 60) / 60 && !emulator.VBlank)
+            // Execute exactly 1000000 instructions per second (each instruction is 1 cycle)
+            while (cycles < 1000000 * gameTime.ElapsedGameTime.TotalSeconds  && !emulator.VBlank)
             {
-            // Execute Current frame of CPU cycle
+                // Execute Current frame of CPU cycle
                 if (!emulator.VBlank)
                 {
                     emulator.ExecuteCPU();
@@ -169,7 +176,11 @@ namespace FrontEnd
             //nearest neighboor scaling
             targetBatch.Begin(samplerState: SamplerState.PointClamp);
 
-            targetBatch.Draw(target, new Rectangle(0, 0, Window.ClientBounds.Width, Window.ClientBounds.Height), Color.White);
+            // Account for change in window size
+            drawDestination.Width = Window.ClientBounds.Width;
+            drawDestination.Height = Window.ClientBounds.Height;
+
+            targetBatch.Draw(target, drawDestination, Color.White);
 
             targetBatch.End();
 

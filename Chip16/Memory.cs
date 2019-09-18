@@ -18,7 +18,7 @@ namespace Chip16
     public class Memory
     {
         // Chip16 has 64 KB (65,536 B) of memory.
-        private byte[] memory;
+        private readonly byte[] memory;
 
         public enum MemoryMap
         {
@@ -35,7 +35,13 @@ namespace Chip16
         // Read 16-bit Word
         public UInt16 ReadWord(UInt16 address)
         {
-            return (UInt16)(this.memory[address] << 8 | this.memory[address + 1]);
+            return (UInt16)((this.memory[address] << 0) | (this.memory[address + 1] << 8));
+        }
+
+        public void SetWord(UInt16 address, UInt16 word)
+        {
+            memory[(UInt16)(address + 0u)] = (byte)(word & 0x00FF);
+            memory[(UInt16)(address + 1u)] = (byte)(word >> 8);
         }
 
         public UInt32 ReadOpcode(UInt16 address)
@@ -49,6 +55,7 @@ namespace Chip16
             set { this.memory[address] = value; }
         }
 
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0059:Unnecessary assignment of a value", Justification = "<Pending>")]
         public UInt16 LoadRom(byte[] data)
         {
             // 16 byte header
@@ -57,19 +64,19 @@ namespace Chip16
             UInt32 magicNumber = (UInt32)((data[0x00] << 24) | (data[0x01] << 16) | (data[0x02] << 8) | (data[0x03] << 0));
 
             // Unused reserved byte
-            byte reserved = data[0x04];
+            //byte reserved = data[0x04];
 
             // Version of rom spec
-            byte specificationVersion = data[0x05];
+            //byte specificationVersion = data[0x05];
 
             // Excludes header
-            UInt32 romSize = (UInt32)((data[0x06] << 24) | (data[0x07] << 16) | (data[0x08] << 8) | (data[0x09] << 0));
+            //UInt32 romSize = (UInt32)((data[0x06] << 24) | (data[0x07] << 16) | (data[0x08] << 8) | (data[0x09] << 0));
 
             // Initial value of PC
-            UInt16 startAddress = (UInt16)((data[0x0A] << 8) | (data[0x0B]) << 0);
+            UInt16 startAddress = (UInt16)((data[0x0A] << 0) | (data[0x0B] << 8));
 
             // ROM checksum
-            UInt32 CRC32 = (UInt32)((data[0x0C] << 24) | (data[0x0D] << 16) | (data[0x0E] << 8) | (data[0x0F] << 0));
+            //UInt32 CRC32 = (UInt32)((data[0x0C] << 24) | (data[0x0D] << 16) | (data[0x0E] << 8) | (data[0x0F] << 0));
 
             // Load ROM into memory
 
