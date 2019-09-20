@@ -195,7 +195,7 @@ namespace Chip16
 
                     case 0x02:
                         graphics.HFlip = true;
-                        this.graphics.VFlip = false;
+                        graphics.VFlip = false;
                         break;
 
                     case 0x03:
@@ -445,7 +445,7 @@ namespace Chip16
             };
 
             // TSTI RX, HHLL
-            this[0x63] = delegate ()
+            this[0x64] = delegate ()
             {
                 UInt16 discard = 0;
                 And(ref discard, R[X], R[Y]);
@@ -706,7 +706,7 @@ namespace Chip16
 
         public void Execute()
         {
-            Console.WriteLine($"{instructions[InstructionCode].Mnemonic} : {Opcode.ToString("x")}");
+            
             Opcode = this.memory.ReadOpcode((UInt16)this.PC);
             InstructionCode = (byte)(Opcode >> 24);
             Operand1 = (byte)((Opcode & 0x00FF0000) >> 16);
@@ -719,6 +719,7 @@ namespace Chip16
             Y = (byte)((Operand1 & 0xF0) >> 4);
             X = (byte)((Operand1 & 0x0F) >> 0);
             N = (byte)((Operand2 & 0x0F) >> 0);
+            Console.WriteLine($"{instructions[InstructionCode].Mnemonic} : {Opcode.ToString("x")}");
             this.PC += 4;
             // Execute Current instruction
             this[InstructionCode]();
